@@ -1,0 +1,246 @@
+<title>Microburg</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Pixelify+Sans:wght@700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a full-bleed pixel diorama with floating beveled chrome on top of it.
+   Status strip across the top, tool rail on the left (a bottom strip on phones),
+   inspector bottom right, news ticker bottom centre. */
+:root {
+  --chrome: #cdcabf; --chrome-hi: #f4f2e8; --chrome-lo: #8a877c; --well: #e7e4d8; --edge: #1b1d2a;
+  --ink: #1b1d2a; --ink-soft: #50535f; --accent: #2444c4; --accent-ink: #ffffff;
+  --coin: #7d5200; --good: #1c6e34; --bad: #a8231c; --warn: #8a5600; --bar: #2f9a44;
+  --led-bg: #171a26; --led-ink: #ffd76a;
+  --sea: #1f55c8; --shadow: rgba(10, 12, 30, .38); --scrim: rgba(12, 16, 40, .42);
+  --font-display: 'Silkscreen', 'Courier New', monospace;
+  --font-title: 'Pixelify Sans', 'Silkscreen', 'Courier New', monospace;
+  --font-body: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --chrome: #2c2f3d; --chrome-hi: #4a4f63; --chrome-lo: #14161e; --well: #1c1e28; --edge: #07080d;
+    --ink: #edebdf; --ink-soft: #a7aab8; --accent: #8ea4ff; --accent-ink: #0b0e1c;
+    --coin: #f0c24a; --good: #6fd08a; --bad: #ff8a7a; --warn: #f0b65a; --bar: #55c06c;
+    --led-bg: #0b0d14; --led-ink: #ffd76a;
+    --sea: #12307a; --shadow: rgba(0, 0, 0, .5); --scrim: rgba(4, 6, 16, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --chrome: #2c2f3d; --chrome-hi: #4a4f63; --chrome-lo: #14161e; --well: #1c1e28; --edge: #07080d;
+  --ink: #edebdf; --ink-soft: #a7aab8; --accent: #8ea4ff; --accent-ink: #0b0e1c;
+  --coin: #f0c24a; --good: #6fd08a; --bad: #ff8a7a; --warn: #f0b65a; --bar: #55c06c;
+  --led-bg: #0b0d14; --led-ink: #ffd76a;
+  --sea: #12307a; --shadow: rgba(0, 0, 0, .5); --scrim: rgba(4, 6, 16, .5);
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--sea); color: var(--ink); font-family: var(--font-body); font-size: 13px; line-height: 1.4; overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
+#app { position: relative; height: 100%; overflow: hidden; }
+#stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; background: var(--sea); }
+#stage.painting { cursor: crosshair; }
+#stage.grabbing { cursor: grabbing; }
+#stage.pointing { cursor: pointer; }
+#view { display: block; position: absolute; left: 0; top: 0; image-rendering: pixelated; image-rendering: crisp-edges; }
+#fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.float { position: absolute; font-family: var(--font-display); font-weight: 700; font-size: 16px; line-height: 1; color: #ffe066; text-shadow: 2px 0 0 #14161f, -2px 0 0 #14161f, 0 2px 0 #14161f, 0 -2px 0 #14161f; white-space: nowrap; transform: translate(-50%, -50%); animation: rise 1s steps(10) forwards; }
+.float.up { color: #a8d86a; }
+@keyframes rise { to { transform: translate(-50%, calc(-50% - 34px)); opacity: 0; } }
+
+/* ---- chrome ---- */
+#hud { position: absolute; inset: 0; pointer-events: none; display: grid; grid-template: "top top" auto "rail main" minmax(0, 1fr) "rail bottom" auto / auto minmax(0, 1fr); gap: 10px;
+  padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+#hud > * { pointer-events: auto; }
+.plate, .btn, .tool { background: var(--chrome); color: var(--ink); box-shadow: inset 2px 2px 0 var(--chrome-hi), inset -2px -2px 0 var(--chrome-lo), 0 0 0 2px var(--edge), 4px 4px 0 2px var(--shadow); }
+.plate { padding: 6px 10px; min-width: 0; }
+.k { display: block; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.soft { color: var(--ink-soft); }
+.meter { display: inline-block; height: 8px; min-width: 48px; background: var(--well); box-shadow: inset 2px 2px 0 var(--chrome-lo); vertical-align: middle; overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: var(--bar); }
+button { font: inherit; color: inherit; }
+.btn { border: 0; padding: 7px 12px; font-family: var(--font-display); font-size: 12px; font-weight: 400; line-height: 1.2; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn:hover { background: var(--chrome-hi); }
+.btn:active, .btn[aria-pressed="true"] { background: var(--well); box-shadow: inset 2px 2px 0 var(--chrome-lo), inset -2px -2px 0 var(--chrome-hi), 0 0 0 2px var(--edge), 4px 4px 0 2px var(--shadow); }
+.btn.ic { width: 36px; height: 36px; padding: 0; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); box-shadow: inset 2px 2px 0 rgba(255, 255, 255, .35), inset -2px -2px 0 rgba(0, 0, 0, .35), 0 0 0 2px var(--edge), 4px 4px 0 2px var(--shadow); }
+.btn.danger { color: var(--bad); }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.ico { display: block; }
+
+#top { grid-area: top; display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+.city { display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.city .name { all: unset; font-family: var(--font-display); font-weight: 700; font-size: 16px; line-height: 1.2; cursor: pointer; }
+.city .name:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.rank { display: flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap; }
+.stat b { display: block; font-family: var(--font-display); font-size: 16px; font-weight: 400; line-height: 1.3; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stat.coin b { color: var(--coin); }
+.stat .k i { font-style: normal; color: var(--good); letter-spacing: 0; text-transform: none; }
+.stat.warn b { color: var(--warn); }
+.goal { flex: 1 1 180px; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: center; }
+.goal .k { grid-column: 1 / -1; }
+#goalText { font-weight: 500; }
+.goal .meter { grid-column: 1; width: 100%; }
+.reward { grid-row: 2 / 4; grid-column: 2; font-family: var(--font-display); font-size: 16px; font-weight: 400; color: var(--coin); white-space: nowrap; }
+.goal.done { background: var(--chrome-hi); }
+.ctl { display: flex; gap: 8px; align-items: center; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+
+#rail { grid-area: rail; display: flex; flex-direction: column; gap: 10px; min-height: 0; align-self: start; max-height: 100%; width: 140px; }
+#tools { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 2px 6px 6px 2px; overflow: auto; min-height: 0; scrollbar-width: thin; }
+.tool { border: 0; padding: 4px 2px 3px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 1px; position: relative; min-width: 62px; }
+.tool img, .tool .glyph { width: 52px; height: 52px; image-rendering: pixelated; display: grid; place-items: center; }
+.tool span { font-family: var(--font-display); font-size: 10px; line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tool:hover { background: var(--chrome-hi); }
+.tool[aria-pressed="true"] { background: var(--well); box-shadow: inset 2px 2px 0 var(--chrome-lo), inset -2px -2px 0 var(--chrome-hi), 0 0 0 2px var(--edge), 0 0 0 4px var(--accent); }
+.tool.locked img { filter: grayscale(1) brightness(.75); opacity: .55; }
+.tool.locked span { color: var(--ink-soft); }
+.tool.poor span { color: var(--bad); }
+#toolInfo { font-size: 12px; }
+#toolInfo b { font-family: var(--font-display); font-size: 13px; font-weight: 700; display: block; }
+#toolInfo .d + .d { margin-top: 4px; }
+#toolInfo .cost { color: var(--coin); font-family: var(--font-display); font-size: 11px; }
+
+#inspect { grid-area: main; align-self: end; justify-self: end; width: min(290px, 100%); max-height: 100%; overflow: auto; }
+#inspect h2 { margin: 0; font-family: var(--font-display); font-size: 15px; font-weight: 700; line-height: 1.2; text-wrap: balance; }
+#inspect .sub { color: var(--ink-soft); margin-bottom: 6px; }
+#inspect .row { display: flex; justify-content: space-between; gap: 8px; }
+#inspect .row b { font-family: var(--font-display); font-weight: 400; font-size: 13px; font-variant-numeric: tabular-nums; }
+.pips { display: inline-flex; gap: 2px; vertical-align: middle; }
+.pips i { width: 8px; height: 8px; background: var(--well); box-shadow: inset 1px 1px 0 var(--chrome-lo); }
+.pips i.on { background: var(--accent); box-shadow: none; }
+.needs { list-style: none; margin: 6px 0; padding: 6px 8px; background: var(--well); box-shadow: inset 2px 2px 0 var(--chrome-lo); display: grid; gap: 3px; }
+.needs li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; align-items: start; }
+.needs .ok { color: var(--good); } .needs .no { color: var(--bad); } .needs .na { color: var(--ink-soft); }
+.needs .ico { margin-top: 2px; }
+#inspect .hint { margin: 6px 0; }
+#inspect .acts { display: flex; gap: 8px; justify-content: space-between; margin-top: 8px; }
+
+#bottom { grid-area: bottom; display: flex; justify-content: center; min-width: 0; }
+#ticker { background: var(--led-bg); color: var(--led-ink); font-family: var(--font-display); font-size: 12px; line-height: 1.35; padding: 6px 12px; box-shadow: 0 0 0 2px var(--edge), 4px 4px 0 2px var(--shadow); max-width: min(680px, 100%); text-align: center; text-wrap: balance; }
+#toasts { grid-area: main; align-self: start; justify-self: center; display: grid; gap: 6px; justify-items: center; width: min(100%, 460px); z-index: 5; }
+#hud > #toasts { pointer-events: none; }
+.toast { background: var(--accent); color: var(--accent-ink); font-family: var(--font-display); font-size: 13px; font-weight: 400; line-height: 1.3; padding: 7px 14px; box-shadow: 0 0 0 2px var(--edge), 4px 4px 0 2px var(--shadow); text-align: center; animation: toast 4s steps(24) forwards; }
+.toast.bad { background: var(--bad); color: #fff; }
+@keyframes toast { 0% { opacity: 0; transform: translateY(-8px); } 6%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+.modal { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: var(--scrim); overflow: auto;
+  padding-block: 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.card { width: min(440px, 100%); padding: 0; }
+.card .bar { background: var(--accent); color: var(--accent-ink); font-family: var(--font-display); font-size: 12px; padding: 4px 10px; margin: 4px 4px 0; display: flex; justify-content: space-between; align-items: center; }
+.card .body { padding: 14px 16px 16px; display: grid; gap: 12px; }
+.card h1 { margin: 0; font-family: var(--font-title); font-weight: 700; font-size: 44px; line-height: 1; letter-spacing: .01em; }
+.card p { margin: 0; max-width: 60ch; }
+.card ol { margin: 0; padding: 8px 10px 8px 30px; background: var(--well); box-shadow: inset 2px 2px 0 var(--chrome-lo); display: grid; gap: 4px; }
+.card .acts { display: flex; flex-wrap: wrap; gap: 10px; }
+.card .acts .btn { flex: 1 1 auto; }
+.card .keys { font-size: 12px; color: var(--ink-soft); }
+.card label { display: grid; gap: 4px; font-weight: 500; }
+.card input[type="text"] { font: inherit; color: var(--ink); background: var(--well); border: 0; padding: 6px 8px; box-shadow: inset 2px 2px 0 var(--chrome-lo), 0 0 0 2px var(--edge); -webkit-user-select: text; user-select: text; min-width: 0; }
+.seg { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.seg > span { min-width: 84px; font-weight: 500; }
+
+@media (max-width: 760px) {
+  #hud { grid-template: "top" auto "main" minmax(0, 1fr) "bottom" auto "rail" auto / minmax(0, 1fr); gap: 8px; padding-block: 8px; }
+  #top { gap: 8px; }
+  .city { flex: 1 1 140px; order: 0; padding: 4px 8px; }
+  .city .name { font-size: 14px; }
+  .ctl { order: 1; gap: 6px; margin-left: 0; flex: none; }
+  .ctl .wide { display: none; }
+  .stat { flex: 1 1 26%; order: 2; padding: 4px 8px; }
+  .stat b { font-size: 14px; }
+  .stat .k { letter-spacing: .04em; white-space: nowrap; }
+  .goal { flex-basis: 100%; order: 3; padding: 4px 8px; }
+  #rail { width: auto; max-height: none; flex-direction: column-reverse; gap: 8px; }
+  #tools { display: flex; overflow-x: auto; overflow-y: hidden; padding: 4px 6px 8px 4px; gap: 8px; }
+  .tool { flex: 0 0 auto; }
+  #toolInfo { padding: 4px 8px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  #toolInfo b { display: inline; }
+  #toolInfo .d { flex: 1 1 100%; }
+  #inspect { width: min(320px, 100%); }
+  .card h1 { font-size: 36px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .float, .toast { animation-duration: .01s; animation-iteration-count: 1; }
+  .toast { animation: none; }
+}
+</style>
+
+<div id="app">
+  <div id="stage" aria-label="City map"><canvas id="view"></canvas><div id="fx"></div></div>
+
+  <div id="hud">
+    <div id="top">
+      <div class="plate city">
+        <button class="name" id="cityName" title="Town menu">Microburg</button>
+        <div class="rank"><span id="rankName">Hamlet</span><span class="meter"><i id="rankBar"></i></span><span id="rankNext" class="soft"></span></div>
+      </div>
+      <div class="plate stat" id="plPop"><span class="k">Residents</span><b id="statPop">0</b></div>
+      <div class="plate stat" id="plJobs" title="Jobs offered / jobs your residents need"><span class="k">Jobs</span><b id="statJobs">0</b></div>
+      <div class="plate stat coin"><span class="k">Coins <i id="statRate"></i></span><b id="statCoins">0</b></div>
+      <div class="plate goal" id="goal"><span class="k">Goal</span><span id="goalText">&nbsp;</span><span class="meter"><i id="goalBar"></i></span><span class="reward" id="goalReward"></span></div>
+      <div class="ctl" role="group" aria-label="View and game controls">
+        <button class="btn ic" id="bRotL" title="Turn the map left (Q)" aria-label="Turn the map left"></button>
+        <button class="btn ic" id="bRotR" title="Turn the map right (E)" aria-label="Turn the map right"></button>
+        <button class="btn ic wide" id="bZoomOut" title="Zoom out (-)" aria-label="Zoom out"></button>
+        <button class="btn ic wide" id="bZoomIn" title="Zoom in (+)" aria-label="Zoom in"></button>
+        <button class="btn ic" id="bSpeed" title="Pause, play, fast (P)" aria-label="Game speed"></button>
+        <button class="btn ic wide" id="bTime" title="Daylight: auto, day, night (L)" aria-label="Daylight"></button>
+        <button class="btn ic wide" id="bSound" title="Sound (M)" aria-label="Sound"></button>
+        <button class="btn ic" id="bMenu" title="Menu" aria-label="Menu"></button>
+      </div>
+    </div>
+
+    <div id="rail">
+      <div id="tools" role="toolbar" aria-label="Build tools"></div>
+      <div class="plate" id="toolInfo"></div>
+    </div>
+
+    <div class="plate" id="inspect" hidden></div>
+
+    <div id="bottom"><div id="ticker" aria-live="off">&nbsp;</div></div>
+    <div id="toasts" aria-live="polite"></div>
+  </div>
+
+  <div class="modal" id="intro" hidden>
+    <div class="plate card" role="dialog" aria-labelledby="introTitle">
+      <div class="bar"><span>Welcome</span><span>est. 2000-ish</span></div>
+      <div class="body">
+        <h1 id="introTitle">Microburg</h1>
+        <p>A pocket-sized city builder. Lay roads, drop lots, and keep people happy. The buildings grow by themselves, from cottages to skyscrapers.</p>
+        <ol>
+          <li>Roads first. Every lot needs a road beside it.</li>
+          <li>Homes ask for things: a park, shops, jobs, a school. A bubble over a building shows what it is missing.</li>
+          <li>Four level-4 lots in a 2&times;2 square merge into one big block, then a tower.</li>
+          <li>Tap the floating coins, and the balloon when it drifts by, for a bonus.</li>
+        </ol>
+        <div class="acts">
+          <button class="btn primary" id="bStart">Start a new town</button>
+          <button class="btn" id="bTour">Look around the big city</button>
+        </div>
+        <p class="keys">Drag to move the map. Drag two fingers sideways on a trackpad to turn it (twist two fingers on a phone), or press Q and E. Pinch or scroll to zoom. Zoom right in to see the people on the streets.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="menu" hidden>
+    <div class="plate card" role="dialog" aria-labelledby="menuTitle">
+      <div class="bar"><span id="menuTitle">Town menu</span><button class="btn ic" id="bMenuClose" aria-label="Close menu" style="width:24px;height:24px"></button></div>
+      <div class="body">
+        <label for="inName">Town name<input type="text" id="inName" maxlength="22" autocomplete="off" spellcheck="false"></label>
+        <div class="seg"><span>Speed</span><button class="btn" data-speed="0">Pause</button><button class="btn" data-speed="1">Play</button><button class="btn" data-speed="3">Fast</button></div>
+        <div class="seg"><span>Daylight</span><button class="btn" data-tod="auto">Auto</button><button class="btn" data-tod="day">Day</button><button class="btn" data-tod="night">Night</button></div>
+        <div class="seg"><span>Sound</span><button class="btn" data-snd="1">On</button><button class="btn" data-snd="0">Off</button></div>
+        <div class="acts">
+          <button class="btn" id="bNew">Start a new town</button>
+          <button class="btn" id="bShow">Visit the big city</button>
+          <button class="btn" id="bHelp">How to play</button>
+        </div>
+        <p class="keys" id="menuNote">Your town saves itself in this browser.</p>
+        <p class="keys">Trackpad: drag two fingers sideways to turn the map, up and down to zoom. Keys: 1 to 0 pick a tool, B bulldoze, Esc back to Look. Q and E turn the map, + and - zoom, arrows or WASD move it. P pause, L daylight, M sound.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/*__JS__*/
+</script>
